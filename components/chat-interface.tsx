@@ -26,13 +26,15 @@ export function ChatInterface() {
   ])
   const [input, setInput] = useState("")
   const [isTyping, setIsTyping] = useState(false)
-  const scrollRef = useRef<HTMLDivElement>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-    }
-  }, [messages])
+    scrollToBottom()
+  }, [messages, isTyping])
 
   const handleSend = async () => {
     if (!input.trim()) return
@@ -102,7 +104,7 @@ export function ChatInterface() {
   return (
     <div className="flex h-full w-full">
       {/* Left Sidebar - Chat History */}
-      <div className="w-80 border-r border-border bg-sidebar flex flex-col">
+      <div className="w-80 border-r border-border bg-sidebar flex flex-col min-h-0">
         <div className="p-4 border-b border-sidebar-border">
           <div className="flex items-center gap-2 mb-2">
             <Terminal className="w-5 h-5 text-primary" />
@@ -142,9 +144,9 @@ export function ChatInterface() {
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-h-0">
         {/* Header */}
-        <div className="p-4 border-b border-border bg-card">
+        <div className="p-4 border-b border-border bg-card shrink-0">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-sm font-bold text-primary">TERMINAL SESSION #2847</h2>
@@ -164,7 +166,7 @@ export function ChatInterface() {
         </div>
 
         {/* Messages */}
-        <ScrollArea className="flex-1 p-6" ref={scrollRef}>
+        <ScrollArea className="flex-1 p-6">
           <div className="max-w-4xl mx-auto space-y-6">
             {messages.map((message) => (
               <div
@@ -212,11 +214,12 @@ export function ChatInterface() {
                 </p>
               </div>
             )}
+            <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
 
         {/* Input Area */}
-        <div className="p-4 border-t border-border bg-card">
+        <div className="p-4 border-t border-border bg-card shrink-0">
           <div className="max-w-4xl mx-auto">
             <div className="flex gap-2">
               <div className="flex-1 relative">
