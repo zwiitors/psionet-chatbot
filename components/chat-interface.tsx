@@ -26,7 +26,6 @@ export function ChatInterface() {
   ])
   const [input, setInput] = useState("")
   const [isTyping, setIsTyping] = useState(false)
-  const [rulebookContent, setRulebookContent] = useState<string>("")
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -34,37 +33,6 @@ export function ChatInterface() {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
   }, [messages])
-
-  useEffect(() => {
-    const loadRulebook = async () => {
-      try {
-        const response = await fetch("/rulebook.md")
-        if (!response.ok) throw new Error("Failed to load")
-        const text = await response.text()
-        setRulebookContent(text)
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: Date.now().toString(),
-            role: "system",
-            content: "[SYSTEM] Default rulebook.md loaded successfully.\n[STATUS] Neural link established.",
-            timestamp: new Date(),
-          },
-        ])
-      } catch (error) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: Date.now().toString(),
-            role: "system",
-            content: "[ERROR] Failed to load default rulebook.md. Please check the public directory.\n[STATUS] System degraded.",
-            timestamp: new Date(),
-          },
-        ])
-      }
-    }
-    loadRulebook()
-  }, [])
 
   const handleSend = async () => {
     if (!input.trim()) return
@@ -80,34 +48,44 @@ export function ChatInterface() {
     setInput("")
     setIsTyping(true)
 
-    // Simulate AI response
-    setTimeout(() => {
-      let responseText = ""
-      if (!rulebookContent) {
-        responseText = `> ERROR: DATABASE NOT LOADED\n\n[STATUS] Please check system connection.`
-      } else {
-        const searchTerms = input.toLowerCase().split(" ")
-        const lines = rulebookContent.split("\n")
-        const matches = lines.filter((line) => 
-          searchTerms.every(term => line.toLowerCase().includes(term)) && line.trim().length > 0
-        )
-        
-        if (matches.length > 0) {
-          responseText = `> SEARCHING DATABASE FOR: "${input}"\n\n[RESULT FOUND]\n${matches.slice(0, 5).map(m => `> ${m}`).join("\n")}\n\n[STATUS] Ready for next query...`
-        } else {
-          responseText = `> SEARCHING DATABASE FOR: "${input}"\n\n[RESULT] No exact matches found in local database.\n\n[STATUS] Ready for next query...`
-        }
+    // Call Gemini API
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: input,
+          history: messages.map(m => ({ role: m.role, content: m.content })),
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to fetch response")
       }
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: responseText,
+        content: data.reply,
         timestamp: new Date(),
       }
       setMessages((prev) => [...prev, assistantMessage])
+    } catch (error) {
+      console.error("Chat Error:", error)
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "system",
+        content: `> ERROR: CONNECTION FAILURE\n\n[STATUS] Unable to reach neural network. Ensure GEMINI_API_KEY is set.\n[DEBUG] ${error instanceof Error ? error.message : "Unknown error"}`,
+        timestamp: new Date(),
+      }
+      setMessages((prev) => [...prev, errorMessage])
+    } finally {
       setIsTyping(false)
-    }, 1000)
+    }
   }
 
   const clearHistory = () => {
@@ -261,7 +239,7 @@ export function ChatInterface() {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              STATUS: CONNECTED TO LOCAL ARCHIVE
+              STATUS: CONNECTED TO GEMINI NEURAL LINK
             </p>
           </div>
         </div>
