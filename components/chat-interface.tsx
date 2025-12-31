@@ -1,34 +1,28 @@
 "use client"
 
 import type React from "react"
-
-import { useState, useRef, useEffect } from "react"
+import { useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Terminal, Send, Trash2 } from "lucide-react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
-
-type Message = {
-  id: string
-  role: "user" | "assistant" | "system"
-  content: string
-  timestamp: Date
-}
+import { useChat } from "ai/react"
 
 export function ChatInterface() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      role: "system",
-      content: "ΨI/ONET RULEBOOK SEARCH TERMINAL v2.0.47\nSYSTEM ONLINE // AWAITING INPUT...",
-      timestamp: new Date(),
-    },
-  ])
-  const [input, setInput] = useState("")
-  const [isTyping, setIsTyping] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  
+  const { messages, input, handleInputChange, handleSubmit, isLoading, setMessages } = useChat({
+    initialMessages: [
+      {
+        id: "1",
+        role: "system",
+        content: "ΨI/ONET RULEBOOK SEARCH TERMINAL v2.0.47\nSYSTEM ONLINE // AWAITING INPUT...",
+        createdAt: new Date(),
+      },
+    ],
+  })
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -36,61 +30,7 @@ export function ChatInterface() {
 
   useEffect(() => {
     scrollToBottom()
-  }, [messages, isTyping])
-
-  const handleSend = async () => {
-    if (!input.trim()) return
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: input,
-      timestamp: new Date(),
-    }
-
-    setMessages((prev) => [...prev, userMessage])
-    setInput("")
-    setIsTyping(true)
-
-    // Call Gemini API
-    try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: input,
-          history: messages.map(m => ({ role: m.role, content: m.content })),
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to fetch response")
-      }
-
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: data.reply,
-        timestamp: new Date(),
-      }
-      setMessages((prev) => [...prev, assistantMessage])
-    } catch (error) {
-      console.error("Chat Error:", error)
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "system",
-        content: `> ERROR: CONNECTION FAILURE\n\n[STATUS] Unable to reach neural network. Ensure GEMINI_API_KEY is set.\n[DEBUG] ${error instanceof Error ? error.message : "Unknown error"}`,
-        timestamp: new Date(),
-      }
-      setMessages((prev) => [...prev, errorMessage])
-    } finally {
-      setIsTyping(false)
-    }
-  }
+  }, [messages, isLoading])
 
   const clearHistory = () => {
     setMessages([
@@ -98,7 +38,7 @@ export function ChatInterface() {
         id: "1",
         role: "system",
         content: "ΨI/ONET RULEBOOK SEARCH TERMINAL v2.0.47\nSYSTEM ONLINE // AWAITING INPUT...",
-        timestamp: new Date(),
+        createdAt: new Date(),
       },
     ])
   }
@@ -131,7 +71,9 @@ export function ChatInterface() {
                   <p className="text-sm text-foreground truncate">
                     {">"} {message.content}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">{message.timestamp.toLocaleTimeString("ja-JP")}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {message.createdAt ? new Date(message.createdAt).toLocaleTimeString("ja-JP") : ""}
+                  </p>
                 </button>
               ))}
           </div>
@@ -199,7 +141,9 @@ export function ChatInterface() {
                   >
                     [{message.role.toUpperCase()}]
                   </span>
-                  <span className="text-xs text-muted-foreground">{message.timestamp.toLocaleTimeString("ja-JP")}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {message.createdAt ? new Date(message.createdAt).toLocaleTimeString("ja-JP") : ""}
+                  </span>
                 </div>
                 <div className="text-sm text-foreground leading-relaxed">
                   <ReactMarkdown 
@@ -232,7 +176,7 @@ export function ChatInterface() {
               </div>
             ))}
 
-            {isTyping && (
+            {isLoading && (
               <div className="bg-secondary/20 border border-primary/20 rounded p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-xs font-bold text-primary">[ASSISTANT]</span>
@@ -253,18 +197,19 @@ export function ChatInterface() {
             <div className="flex gap-2">
               <div className="flex-1 relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-primary text-sm">{"> "}</span>
-                <Input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                  placeholder="Enter your query..."
-                  className="pl-8 bg-background border-primary/50 focus:border-primary text-foreground placeholder:text-muted-foreground"
-                  disabled={isTyping}
-                />
+                <form onSubmit={handleSubmit} className="flex-1">
+                  <Input
+                    value={input}
+                    onChange={handleInputChange}
+                    placeholder="Enter your query..."
+                    className="pl-8 bg-background border-primary/50 focus:border-primary text-foreground placeholder:text-muted-foreground w-full"
+                    disabled={isLoading}
+                  />
+                </form>
               </div>
               <Button
-                onClick={handleSend}
-                disabled={!input.trim() || isTyping}
+                onClick={handleSubmit}
+                disabled={!input.trim() || isLoading}
                 className="bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 <Send className="w-4 h-4" />
