@@ -166,7 +166,7 @@ export function ChatInterface() {
         </div>
 
         {/* Messages */}
-        <ScrollArea className="flex-1 p-6">
+        <div className="flex-1 p-6 overflow-y-auto scrollbar-custom">
           <div className="max-w-4xl mx-auto space-y-6">
             {messages.map((message) => (
               <div
@@ -216,7 +216,7 @@ export function ChatInterface() {
             )}
             <div ref={messagesEndRef} />
           </div>
-        </ScrollArea>
+        </div>
 
         {/* Input Area */}
         <div className="p-4 border-t border-border bg-card shrink-0">
