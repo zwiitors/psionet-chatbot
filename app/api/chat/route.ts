@@ -16,7 +16,6 @@ export async function POST(req: Request) {
     }
 
     // Read the rulebook content
-    // In Vercel (and Next.js), process.cwd() is the root of the project.
     const rulebookPath = path.join(process.cwd(), "public", "rulebook.md");
     let rulebookContent = "";
 
@@ -30,11 +29,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
-
     // Construct the prompt
-    // We include the rulebook as system context.
     const systemPrompt = `
 You are a Cyberpunk TRPG Rule Expert (ΨI/ONET Terminal).
 Your primary function is to answer queries based STRICTLY on the provided rulebook content below.
@@ -46,21 +41,22 @@ ${rulebookContent}
 --- RULEBOOK END ---
 `;
 
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-3-flash-preview", 
+      systemInstruction: systemPrompt 
+    });
+
+    // Map the incoming history to Gemini format
+    const mappedHistory = history
+      .filter((msg: any) => msg.role === "user" || msg.role === "assistant")
+      .map((msg: any) => ({
+        role: msg.role === "assistant" ? "model" : "user",
+        parts: [{ text: msg.content }],
+      }));
+
     const chat = model.startChat({
-      history: [
-        {
-          role: "user",
-          parts: [{ text: systemPrompt }],
-        },
-        {
-          role: "model",
-          parts: [{ text: "SYSTEM ONLINE. RULEBOOK DATA LOADED. READY FOR QUERIES." }],
-        },
-        // We could map the previous chat history here if needed, but for now we'll keep it simple
-        // or just append the current user message.
-        // If 'history' is provided from frontend, we could adapt it.
-        // For this implementation, we'll just focus on the current query with the rulebook context established.
-      ],
+      history: mappedHistory,
     });
 
     const result = await chat.sendMessage(message);
