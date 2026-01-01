@@ -6,9 +6,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Terminal, Send, Trash2 } from "lucide-react"
-import ReactMarkdown from "react-markdown"
-import remarkGfm from "remark-gfm"
-import { useChat } from "ai/react"
+
+type Message = {
+  id: string
+  role: "user" | "assistant" | "system"
+  content: string
+  timestamp: Date
+}
 
 export function ChatInterface() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -145,34 +149,7 @@ export function ChatInterface() {
                     {message.createdAt ? new Date(message.createdAt).toLocaleTimeString("ja-JP") : ""}
                   </span>
                 </div>
-                <div className="text-sm text-foreground leading-relaxed">
-                  <ReactMarkdown 
-                    remarkPlugins={[remarkGfm]}
-                    components={{
-                      p: ({ children }) => <p className="mb-2 last:mb-0 whitespace-pre-wrap">{children}</p>,
-                      ul: ({ children }) => <ul className="list-disc ml-4 mb-2">{children}</ul>,
-                      ol: ({ children }) => <ol className="list-decimal ml-4 mb-2">{children}</ol>,
-                      li: ({ children }) => <li className="mb-1">{children}</li>,
-                      code: ({ children }) => <code className="bg-primary/20 text-primary px-1 rounded">{children}</code>,
-                      table: ({ children }) => (
-                        <div className="overflow-x-auto my-4">
-                          <table className="min-w-full border-collapse border border-primary/30 text-xs">
-                            {children}
-                          </table>
-                        </div>
-                      ),
-                      thead: ({ children }) => <thead className="bg-primary/10">{children}</thead>,
-                      th: ({ children }) => <th className="border border-primary/30 p-2 text-left font-bold">{children}</th>,
-                      td: ({ children }) => <td className="border border-primary/30 p-2">{children}</td>,
-                      strong: ({ children }) => <strong className="text-primary font-bold">{children}</strong>,
-                      h1: ({ children }) => <h1 className="text-lg font-bold mb-2 text-primary">{children}</h1>,
-                      h2: ({ children }) => <h2 className="text-md font-bold mb-2 text-primary">{children}</h2>,
-                      h3: ({ children }) => <h3 className="text-sm font-bold mb-1 text-primary">{children}</h3>,
-                    }}
-                  >
-                    {message.content}
-                  </ReactMarkdown>
-                </div>
+                <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{message.content}</p>
               </div>
             ))}
 
